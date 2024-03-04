@@ -79,18 +79,18 @@ class AddressBook(UserDict):
         else:
             raise ValueError(f"Record with name '{name}' not found in the address book.")
 
-    def get_upcoming_birthdays(self, users):
+    def get_upcoming_birthdays(self):
         today = datetime.today().date()
         birthdays = []
-        for user in users:
-            birth_date = user['birthday']
-            birth_date = datetime.strptime(birth_date, '%d.%m.%Y').date().replace(year=today.year)
-            difference_date = (birth_date - today).days
-            if 0 <= difference_date <= 7:
-                if birth_date.isoweekday() < 6:
-                    birthdays.append({'name': user['name'], 'birthday': birth_date.strftime('%d.%m.%Y')})
-                else:
-                    birthdays.append({'name': user['name'], 'birthday': birth_date.strftime('%d.%m.%Y')})
+        for user in self.data.values():
+            if user.birthday:
+                birth_date = datetime.strptime(user.birthday.value, '%d.%m.%Y').date().replace(year=today.year)
+                difference_date = (birth_date - today).days
+                if 0 <= difference_date <= 7:
+                    if birth_date.isoweekday() < 6:
+                        birthdays.append({'name': user.name.value, 'birthday': birth_date.strftime('%d.%m.%Y')})
+                    else:
+                        birthdays.append({'name': user.name.value, 'birthday': birth_date.strftime('%d.%m.%Y')})
         return birthdays
 
 def parse_input(user_input):
@@ -106,7 +106,7 @@ def input_error(func):
             if isinstance(error, ValueError):
                 return 'Error! if you want to:\n' \
                        'add contact: you must input ("add" username phone).\n' \
-                       'change phone: you must input ("change" username phone) or no contacts.\n' \
+                       'change phone: you must input ("change" username old_phone new_phone) or no contacts.\n' \
                        'get phone: you must input ("phone" username)\n'\
                        'add-birthday: you must input("add-birthday" username DD.MM.YYYY)\n'\
                        'show-birthday: you must input("show-birthday" username)\n'
@@ -133,10 +133,10 @@ def add_contact(args, book: AddressBook):
 
 @input_error
 def change_phone(args, book: AddressBook):
-    name, new_phone = args
+    name, old_phone, new_phone = args
     record = book.find(name)
     if record:
-        record.edit_phone(record.phones[0].value, new_phone)
+        record.edit_phone(old_phone, new_phone)
         return f"Phone number for '{name}' changed."
     else:
         return f"Contact {name} not found."
@@ -183,8 +183,7 @@ def show_birthday(args, book: AddressBook):
 
 # @input_error
 def birthdays(book: AddressBook):
-    users = [{'name': record.name.value, 'birthday': record.birthday.value} for record in book.data.values() if record.birthday]
-    upcoming_birthdays = book.get_upcoming_birthdays(users)
+    upcoming_birthdays = book.get_upcoming_birthdays()
     if not upcoming_birthdays:
         return "No upcoming birthdays"
     else:
